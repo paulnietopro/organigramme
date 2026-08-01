@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Constructeur d'Organigramme Interactif</title>
+  
+  <!-- jsPlumb Community Edition -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jsPlumb/2.15.6/js/jsplumb.min.js"></script>
+
+  <style>
+    :root {
+      --bg-color: #f4f6f9;
+      --card-bg: #ffffff;
+      --primary: #2563eb;
+      --primary-hover: #1d4ed8;
+      --success: #16a34a;
+      --success-hover: #15803d;
+      --danger: #ef4444;
+      --border: #e2e8f0;
+      --text: #1e293b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { display: flex; flex-direction: column; height: 100vh; background-color: var(--bg-color); color: var(--text); overflow: hidden; }
+
+    /* Barre supérieure */
+    #topbar {
+      height: 55px;
+      background-color: #ffffff;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+      z-index: 20;
+    }
+
+    #topbar h2 { font-size: 1.2rem; color: var(--primary); }
+
+    .topbar-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    /* Conteneur principal */
+    #main-container {
+      display: flex;
+      flex-grow: 1;
+      height: calc(100vh - 55px);
+      position: relative;
+    }
+
+    /* Barre latérale */
+    #sidebar {
+      width: 320px;
+      min-width: 320px;
+      background-color: #ffffff;
+      border-right: 1px solid var(--border);
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      z-index: 10;
+      overflow-y: auto;
+    }
+
+    .sidebar-section {
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .sidebar-section h3 {
+      font-size: 0.9rem;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+
+    .sidebar-section label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #64748b;
+    }
+
+    .sidebar-section input {
+      width: 100%;
+      padding: 6px 8px;
+      font-size: 0.85rem;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+
+    .btn {
+      background-color: var(--primary);
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .btn:hover { background-color: var(--primary-hover); }
+    .btn-success { background-color: var(--success); }
+    .btn-success:hover { background-color: var(--success-hover); }
+    .btn-danger { background-color: var(--danger); }
+    .btn-danger:hover { background-color: #dc2626; }
+
+    /* Zone Conteneur avec scrollbars */
+    #workspace-container {
+      flex-grow: 1;
+      position: relative;
+      overflow: auto;
+      background-color: #e2e8f0;
+      cursor: grab;
+    }
+
+    #workspace-container:active {
+      cursor: grabbing;
+    }
+
+    /* Canvas étendu */
+    #workspace {
+      position: relative;
+      width: 3500px;
+      height: 2500px;
+      background-color: var(--bg-color);
+      background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+
+    /* Cartouche d'en-tête Établissement FLOTTANT (Flotte par-dessus la vue) */
+    #school-info-header {
+      position: fixed;
+      top: 70px;
+      right: 25px;
+      width: 300px;
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(4px);
+      border: 1px solid var(--border);
+      border-right: 4px solid var(--primary);
+      border-radius: 6px;
+      padding: 10px 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      z-index: 15;
+      pointer-events: none; /* Laisse passer les interactions en dessous si besoin */
+    }
+
+    #school-info-header .school-name {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--primary);
+      margin-bottom: 4px;
+    }
+
+    #school-info-header .info-line {
+      font-size: 0.75rem;
+      color: #475569;
+      line-height: 1.3;
+      word-break: break-all;
+    }
+
+    /* Cartes */
+    .person-card {
+      position: absolute;
+      width: 220px;
+      min-width: 200px;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-top: 4px solid var(--primary);
+      border-radius: 8px;
+      padding: 12px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.06);
+      cursor: move;
+      user-select: none;
+    }
+
+    .person-card h4 { font-size: 0.95rem; color: var(--text); margin-bottom: 2px; pointer-events: none; }
+    .person-card .role { font-size: 0.82rem; font-weight: 600; color: #64748b; margin-bottom: 6px; pointer-events: none; }
+    
+    .person-card .email-container {
+      font-size: 0.78rem;
+      margin-bottom: 8px;
+      word-break: break-all;
+    }
+    .person-card .email-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .person-card .email-link:hover {
+      text-decoration: underline;
+    }
+
+    .person-card .missions {
+      font-size: 0.78rem;
+      color: #334155;
+      background: #f8fafc;
+      padding: 6px;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      max-height: 80px;
+      overflow-y: auto;
+      pointer-events: none;
+    }
+
+    .card-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .action-btn {
+      font-size: 0.75rem;
+      padding: 3px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: #fff;
+      cursor: pointer;
+    }
+
+    /* Modal */
+    #modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.4);
+      justify-content: center;
+      align-items: center;
+      z-index: 100;
+    }
+
+    .modal {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      width: 400px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .modal input, .modal textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+
+    .email-input-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .email-input-group input { flex: 1; }
+    .email-input-group span { font-weight: bold; color: #64748b; }
+
+    /* Scrollbar */
+    #workspace-container::-webkit-scrollbar { width: 10px; height: 10px; }
+    #workspace-container::-webkit-scrollbar-track { background: #e2e8f0; }
+    #workspace-container::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 5px; }
+    #workspace-container::-webkit-scrollbar-thumb:hover { background: #64748b; }
+  </style>
+</head>
+<body>
+
+  <!-- Barre du haut -->
+  <div id="topbar">
+    <h2>Organigramme Interactif</h2>
+    <div class="topbar-actions">
+      <button class="btn btn-success" onclick="saveDiagram()">💾 Sauvegarder (JSON)</button>
+      <button class="btn" onclick="triggerLoad()">📂 Charger</button>
+      <input type="file" id="file-input" accept=".json" style="display: none;" onchange="loadDiagram(event)">
+    </div>
+  </div>
+
+  <div id="main-container">
+    <!-- Panneau latéral -->
+    <div id="sidebar">
+      <!-- Section Établissement -->
+      <div class="sidebar-section">
+        <h3>Informations Établissement</h3>
+        
+        <div>
+          <label>1. Nom de l'établissement</label>
+          <input type="text" id="sch-name" placeholder="ex: Lycée Odilon Redon" oninput="updateSchoolHeader()">
+        </div>
+
+        <div>
+          <label>2. Adresse postale</label>
+          <input type="text" id="sch-address" placeholder="ex: 1 place Jules Ferry, 33340 Lesparre" oninput="updateSchoolHeader()">
+        </div>
+
+        <div>
+          <label>3. Adresse mail</label>
+          <input type="email" id="sch-email" placeholder="ex: ce.0330026u@ac-bordeaux.fr" oninput="updateSchoolHeader()">
+        </div>
+
+        <div>
+          <label>4. Numéro de téléphone</label>
+          <input type="tel" id="sch-phone" placeholder="ex: 05 56 73 31 00" oninput="updateSchoolHeader()">
+        </div>
+      </div>
+
+      <button class="btn" onclick="openModal()">+ Ajouter une personne</button>
+      
+      <p style="font-size: 0.8rem; color: #64748b; margin-top: 5px;">
+        • <b>Naviguer :</b> Défilez ou maintenez <b>Shift + Clic</b> sur le fond.<br>
+        • <b>Connecter :</b> Glissez une flèche depuis le point bleu inférieur vers le point bleu supérieur d'un autre poste.<br>
+        • <b>Email :</b> Cliquez sur l'adresse email d'une carte pour envoyer un message.
+      </p>
+    </div>
+
+    <!-- Cartouche Établissement FLOTTANT -->
+    <div id="school-info-header">
+      <div class="school-name" id="disp-name">Nom de l'établissement</div>
+      <div class="info-line" id="disp-address">Adresse postale</div>
+      <div class="info-line" id="disp-email">Email</div>
+      <div class="info-line" id="disp-phone">Téléphone</div>
+    </div>
+
+    <!-- Espace Canvas -->
+    <div id="workspace-container">
+      <div id="workspace"></div>
+    </div>
+  </div>
+
+  <!-- Modal Édition / Création -->
+  <div id="modal-overlay">
+    <div class="modal">
+      <h3 id="modal-title">Ajouter une personne</h3>
+      <input type="hidden" id="edit-id">
+      <div>
+        <label style="font-size: 0.8rem;">Nom & Prénom</label>
+        <input type="text" id="input-name" placeholder="ex: Jean Dupont">
+      </div>
+      <div>
+        <label style="font-size: 0.8rem;">Poste / Titre</label>
+        <input type="text" id="input-role" placeholder="ex: Responsable Projets">
+      </div>
+      <div>
+        <label style="font-size: 0.8rem;">Adresse Email</label>
+        <div class="email-input-group">
+          <input type="text" id="input-email-prefix" placeholder="j.dupont">
+          <span>@</span>
+          <input type="text" id="input-email-domain" placeholder="domaine.fr">
+        </div>
+      </div>
+      <div>
+        <label style="font-size: 0.8rem;">Missions</label>
+        <textarea id="input-missions" rows="3" placeholder="ex: Suivi budget, gestion d'équipe..."></textarea>
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;">
+        <button class="btn btn-danger" onclick="closeModal()">Annuler</button>
+        <button class="btn" onclick="savePerson()">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let jsPlumbInstance;
+    let cardCount = 0;
+
+    jsPlumb.ready(function () {
+      jsPlumbInstance = jsPlumb.getInstance({
+        Connector: ["Flowchart", { cornerRadius: 6, stub: 12 }],
+        DragOptions: { cursor: 'pointer', zIndex: 2000 },
+        PaintStyle: { stroke: '#64748b', strokeWidth: 2 },
+        EndpointStyle: { radius: 5, fill: '#2563eb' },
+        HoverPaintStyle: { stroke: '#2563eb', strokeWidth: 3 },
+        Container: "workspace"
+      });
+
+      jsPlumbInstance.bind("click", function (conn) {
+        if (confirm("Supprimer ce lien hiérarchique ?")) {
+          jsPlumbInstance.deleteConnection(conn);
+        }
+      });
+
+      const container = document.getElementById('workspace-container');
+      container.addEventListener('scroll', () => {
+        jsPlumbInstance.repaintEverything();
+      });
+    });
+
+    // Mise à jour de l'affichage Établissement
+    function updateSchoolHeader() {
+      const name = document.getElementById('sch-name').value || "Nom de l'établissement";
+      const address = document.getElementById('sch-address').value || "Adresse postale";
+      const email = document.getElementById('sch-email').value || "Email";
+      const phone = document.getElementById('sch-phone').value || "Téléphone";
+
+      document.getElementById('disp-name').innerText = name;
+      document.getElementById('disp-address').innerText = address;
+      document.getElementById('disp-email').innerText = email;
+      document.getElementById('disp-phone').innerText = phone;
+    }
+
+    // Navigation Pan (Shift + Clic)
+    const container = document.getElementById('workspace-container');
+    let isPanning = false;
+    let startX, startY, scrollLeft, scrollTop;
+
+    container.addEventListener('mousedown', (e) => {
+      if (e.target.id === 'workspace' || e.target.id === 'workspace-container') {
+        if (e.shiftKey || e.button === 1) {
+          isPanning = true;
+          startX = e.pageX - container.offsetLeft;
+          startY = e.pageY - container.offsetTop;
+          scrollLeft = container.scrollLeft;
+          scrollTop = container.scrollTop;
+        }
+      }
+    });
+
+    container.addEventListener('mousemove', (e) => {
+      if (!isPanning) return;
+      e.preventDefault();
+      const x = e.pageX - container.offsetLeft;
+      const y = e.pageY - container.offsetTop;
+      const walkX = (x - startX);
+      const walkY = (y - startY);
+      container.scrollLeft = scrollLeft - walkX;
+      container.scrollTop = scrollTop - walkY;
+    });
+
+    window.addEventListener('mouseup', () => { isPanning = false; });
+
+    // Modal
+    function openModal(cardId = null) {
+      const modal = document.getElementById('modal-overlay');
+      modal.style.display = 'flex';
+
+      if (cardId) {
+        const card = document.getElementById(cardId);
+        document.getElementById('modal-title').innerText = "Modifier la fiche";
+        document.getElementById('edit-id').value = cardId;
+        document.getElementById('input-name').value = card.querySelector('h4').innerText;
+        document.getElementById('input-role').value = card.querySelector('.role').innerText;
+        
+        const emailAttr = card.getAttribute('data-email') || "";
+        if (emailAttr.includes('@')) {
+          const parts = emailAttr.split('@');
+          document.getElementById('input-email-prefix').value = parts[0];
+          document.getElementById('input-email-domain').value = parts[1];
+        } else {
+          document.getElementById('input-email-prefix').value = emailAttr;
+          document.getElementById('input-email-domain').value = "";
+        }
+
+        document.getElementById('input-missions').value = card.querySelector('.missions').innerText;
+      } else {
+        document.getElementById('modal-title').innerText = "Ajouter une personne";
+        document.getElementById('edit-id').value = "";
+        document.getElementById('input-name').value = "";
+        document.getElementById('input-role').value = "";
+        document.getElementById('input-email-prefix').value = "";
+        document.getElementById('input-email-domain').value = "";
+        document.getElementById('input-missions').value = "";
+      }
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').style.display = 'none';
+    }
+
+    function savePerson() {
+      const id = document.getElementById('edit-id').value;
+      const name = document.getElementById('input-name').value || "Sans Nom";
+      const role = document.getElementById('input-role').value || "Poste non défini";
+      
+      const prefix = document.getElementById('input-email-prefix').value.trim();
+      const domain = document.getElementById('input-email-domain').value.trim();
+      let email = "";
+      if (prefix && domain) {
+        email = `${prefix}@${domain}`;
+      } else if (prefix) {
+        email = prefix;
+      }
+
+      const missions = document.getElementById('input-missions').value || "Aucune mission précisée.";
+
+      if (id) {
+        const card = document.getElementById(id);
+        card.querySelector('h4').innerText = name;
+        card.querySelector('.role').innerText = role;
+        card.setAttribute('data-email', email);
+
+        const emailContainer = card.querySelector('.email-container');
+        if (email) {
+          emailContainer.innerHTML = `<a href="mailto:${email}" class="email-link">✉️ ${email}</a>`;
+        } else {
+          emailContainer.innerHTML = '';
+        }
+
+        card.querySelector('.missions').innerText = missions;
+        jsPlumbInstance.revalidate(id);
+      } else {
+        createCard(null, name, role, email, missions);
+      }
+      closeModal();
+    }
+
+    function createCard(id = null, name, role, email = "", missions = "", top = null, left = null) {
+      if (!id) {
+        cardCount++;
+        id = `person_${cardCount}`;
+      } else {
+        const numId = parseInt(id.replace('person_', ''));
+        if (!isNaN(numId) && numId > cardCount) cardCount = numId;
+      }
+
+      const card = document.createElement('div');
+      card.className = 'person-card';
+      card.id = id;
+      card.setAttribute('data-email', email);
+      
+      const posTop = top !== null ? top : `${container.scrollTop + 80 + (cardCount % 5 * 20)}px`;
+      const posLeft = left !== null ? left : `${container.scrollLeft + 80 + (cardCount % 5 * 20)}px`;
+
+      card.style.top = posTop;
+      card.style.left = posLeft;
+
+      const emailHtml = email ? `<a href="mailto:${email}" class="email-link">✉️ ${email}</a>` : '';
+
+      card.innerHTML = `
+        <h4>${name}</h4>
+        <div class="role">${role}</div>
+        <div class="email-container">${emailHtml}</div>
+        <div class="missions">${missions}</div>
+        <div class="card-actions">
+          <button class="action-btn" onclick="openModal('${id}')">✏️</button>
+          <button class="action-btn btn-danger" onclick="deleteCard('${id}')">🗑️</button>
+        </div>
+      `;
+
+      document.getElementById('workspace').appendChild(card);
+
+      jsPlumbInstance.draggable(id, { containment: 'workspace' });
+
+      jsPlumbInstance.addEndpoint(id, { anchor: "Top", isTarget: true, maxConnections: -1 });
+      jsPlumbInstance.addEndpoint(id, { anchor: "Bottom", isSource: true, maxConnections: -1 });
+
+      return id;
+    }
+
+    function deleteCard(cardId) {
+      if (confirm("Supprimer cette personne et ses liaisons ?")) {
+        jsPlumbInstance.remove(cardId);
+      }
+    }
+
+    /* -------------------------------------------------------------
+       SAUVEGARDE ET CHARGEMENT (JSON)
+    ------------------------------------------------------------- */
+
+    function saveDiagram() {
+      const school = {
+        name: document.getElementById('sch-name').value,
+        address: document.getElementById('sch-address').value,
+        email: document.getElementById('sch-email').value,
+        phone: document.getElementById('sch-phone').value
+      };
+
+      const cards = [];
+      document.querySelectorAll('.person-card').forEach(card => {
+        cards.push({
+          id: card.id,
+          name: card.querySelector('h4').innerText,
+          role: card.querySelector('.role').innerText,
+          email: card.getAttribute('data-email') || "",
+          missions: card.querySelector('.missions').innerText,
+          top: card.style.top,
+          left: card.style.left
+        });
+      });
+
+      const connections = [];
+      jsPlumbInstance.getAllConnections().forEach(conn => {
+        connections.push({
+          sourceId: conn.sourceId,
+          targetId: conn.targetId
+        });
+      });
+
+      const data = { school, cards, connections };
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `organigramme_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function triggerLoad() {
+      document.getElementById('file-input').click();
+    }
+
+    function loadDiagram(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function (e) {
+        try {
+          const data = JSON.parse(e.target.result);
+
+          // Restauration Établissement
+          if (data.school) {
+            document.getElementById('sch-name').value = data.school.name || "";
+            document.getElementById('sch-address').value = data.school.address || "";
+            document.getElementById('sch-email').value = data.school.email || "";
+            document.getElementById('sch-phone').value = data.school.phone || "";
+            updateSchoolHeader();
+          }
+
+          jsPlumbInstance.deleteEveryEndpoint();
+          document.getElementById('workspace').innerHTML = '';
+          cardCount = 0;
+
+          if (data.cards) {
+            data.cards.forEach(c => {
+              createCard(c.id, c.name, c.role, c.email || "", c.missions, c.top, c.left);
+            });
+          }
+
+          if (data.connections) {
+            data.connections.forEach(conn => {
+              jsPlumbInstance.connect({
+                source: conn.sourceId,
+                target: conn.targetId
+              });
+            });
+          }
+
+        } catch (err) {
+          alert("Erreur lors de la lecture du fichier de sauvegarde JSON.");
+          console.error(err);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+  </script>
+</body>
+</html>
