@@ -139,7 +139,7 @@
       background-size: 20px 20px;
     }
 
-    /* Cartouche d'en-tête Établissement FLOTTANT (Flotte par-dessus la vue) */
+    /* Cartouche d'en-tête Établissement FLOTTANT à l'écran */
     #school-info-header {
       position: fixed;
       top: 70px;
@@ -153,7 +153,7 @@
       padding: 10px 14px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.08);
       z-index: 15;
-      pointer-events: none; /* Laisse passer les interactions en dessous si besoin */
+      pointer-events: none;
     }
 
     #school-info-header .school-name {
@@ -188,12 +188,17 @@
     .person-card h4 { font-size: 0.95rem; color: var(--text); margin-bottom: 2px; pointer-events: none; }
     .person-card .role { font-size: 0.82rem; font-weight: 600; color: #64748b; margin-bottom: 6px; pointer-events: none; }
     
-    .person-card .email-container {
+    /* Contact (Email + Téléphone) */
+    .person-card .contact-container {
       font-size: 0.78rem;
       margin-bottom: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
       word-break: break-all;
     }
-    .person-card .email-link {
+
+    .person-card .contact-link {
       color: var(--primary);
       text-decoration: none;
       font-weight: 500;
@@ -201,7 +206,8 @@
       align-items: center;
       gap: 4px;
     }
-    .person-card .email-link:hover {
+
+    .person-card .contact-link:hover {
       text-decoration: underline;
     }
 
@@ -275,6 +281,26 @@
     #workspace-container::-webkit-scrollbar-track { background: #e2e8f0; }
     #workspace-container::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 5px; }
     #workspace-container::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+    /* Impression */
+    @media print {
+      @page { size: landscape; margin: 10mm; }
+      body { background-color: #ffffff !important; overflow: visible !important; height: auto !important; }
+      #topbar, #sidebar, .card-actions, .jtk-endpoint, #modal-overlay { display: none !important; }
+      #main-container { height: auto !important; overflow: visible !important; }
+      #workspace-container { overflow: visible !important; background: transparent !important; }
+      #workspace { background-image: none !important; background-color: #ffffff !important; }
+      #school-info-header {
+        position: absolute !important;
+        top: 0px !important;
+        right: 0px !important;
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+        border-right: 4px solid #2563eb !important;
+        background: #ffffff !important;
+      }
+      .person-card { box-shadow: none !important; border: 1px solid #cbd5e1 !important; border-top: 4px solid #2563eb !important; break-inside: avoid; }
+    }
   </style>
 </head>
 <body>
@@ -283,6 +309,7 @@
   <div id="topbar">
     <h2>Organigramme Interactif</h2>
     <div class="topbar-actions">
+      <button class="btn btn-success" onclick="prepareAndPrint()">🖨️ Imprimer</button>
       <button class="btn btn-success" onclick="saveDiagram()">💾 Sauvegarder (JSON)</button>
       <button class="btn" onclick="triggerLoad()">📂 Charger</button>
       <input type="file" id="file-input" accept=".json" style="display: none;" onchange="loadDiagram(event)">
@@ -322,7 +349,7 @@
       <p style="font-size: 0.8rem; color: #64748b; margin-top: 5px;">
         • <b>Naviguer :</b> Défilez ou maintenez <b>Shift + Clic</b> sur le fond.<br>
         • <b>Connecter :</b> Glissez une flèche depuis le point bleu inférieur vers le point bleu supérieur d'un autre poste.<br>
-        • <b>Email :</b> Cliquez sur l'adresse email d'une carte pour envoyer un message.
+        • <b>Contact :</b> Cliquez sur le mail ou le téléphone d'une carte pour communiquer directement.
       </p>
     </div>
 
@@ -362,6 +389,10 @@
         </div>
       </div>
       <div>
+        <label style="font-size: 0.8rem;">Numéro de téléphone (optionnel)</label>
+        <input type="tel" id="input-phone" placeholder="ex: 06 12 34 56 78">
+      </div>
+      <div>
         <label style="font-size: 0.8rem;">Missions</label>
         <textarea id="input-missions" rows="3" placeholder="ex: Suivi budget, gestion d'équipe..."></textarea>
       </div>
@@ -398,7 +429,6 @@
       });
     });
 
-    // Mise à jour de l'affichage Établissement
     function updateSchoolHeader() {
       const name = document.getElementById('sch-name').value || "Nom de l'établissement";
       const address = document.getElementById('sch-address').value || "Adresse postale";
@@ -463,6 +493,7 @@
           document.getElementById('input-email-domain').value = "";
         }
 
+        document.getElementById('input-phone').value = card.getAttribute('data-phone') || "";
         document.getElementById('input-missions').value = card.querySelector('.missions').innerText;
       } else {
         document.getElementById('modal-title').innerText = "Ajouter une personne";
@@ -471,6 +502,7 @@
         document.getElementById('input-role').value = "";
         document.getElementById('input-email-prefix').value = "";
         document.getElementById('input-email-domain').value = "";
+        document.getElementById('input-phone').value = "";
         document.getElementById('input-missions').value = "";
       }
     }
@@ -493,6 +525,7 @@
         email = prefix;
       }
 
+      const phone = document.getElementById('input-phone').value.trim();
       const missions = document.getElementById('input-missions').value || "Aucune mission précisée.";
 
       if (id) {
@@ -500,23 +533,23 @@
         card.querySelector('h4').innerText = name;
         card.querySelector('.role').innerText = role;
         card.setAttribute('data-email', email);
+        card.setAttribute('data-phone', phone);
 
-        const emailContainer = card.querySelector('.email-container');
-        if (email) {
-          emailContainer.innerHTML = `<a href="mailto:${email}" class="email-link">✉️ ${email}</a>`;
-        } else {
-          emailContainer.innerHTML = '';
-        }
+        const contactContainer = card.querySelector('.contact-container');
+        let contactHtml = "";
+        if (email) contactHtml += `<a href="mailto:${email}" class="contact-link">✉️ ${email}</a>`;
+        if (phone) contactHtml += `<a href="tel:${phone}" class="contact-link">📞 ${phone}</a>`;
+        contactContainer.innerHTML = contactHtml;
 
         card.querySelector('.missions').innerText = missions;
         jsPlumbInstance.revalidate(id);
       } else {
-        createCard(null, name, role, email, missions);
+        createCard(null, name, role, email, phone, missions);
       }
       closeModal();
     }
 
-    function createCard(id = null, name, role, email = "", missions = "", top = null, left = null) {
+    function createCard(id = null, name, role, email = "", phone = "", missions = "", top = null, left = null) {
       if (!id) {
         cardCount++;
         id = `person_${cardCount}`;
@@ -529,6 +562,7 @@
       card.className = 'person-card';
       card.id = id;
       card.setAttribute('data-email', email);
+      card.setAttribute('data-phone', phone);
       
       const posTop = top !== null ? top : `${container.scrollTop + 80 + (cardCount % 5 * 20)}px`;
       const posLeft = left !== null ? left : `${container.scrollLeft + 80 + (cardCount % 5 * 20)}px`;
@@ -536,12 +570,14 @@
       card.style.top = posTop;
       card.style.left = posLeft;
 
-      const emailHtml = email ? `<a href="mailto:${email}" class="email-link">✉️ ${email}</a>` : '';
+      let contactHtml = "";
+      if (email) contactHtml += `<a href="mailto:${email}" class="contact-link">✉️ ${email}</a>`;
+      if (phone) contactHtml += `<a href="tel:${phone}" class="contact-link">📞 ${phone}</a>`;
 
       card.innerHTML = `
         <h4>${name}</h4>
         <div class="role">${role}</div>
-        <div class="email-container">${emailHtml}</div>
+        <div class="contact-container">${contactHtml}</div>
         <div class="missions">${missions}</div>
         <div class="card-actions">
           <button class="action-btn" onclick="openModal('${id}')">✏️</button>
@@ -566,6 +602,42 @@
     }
 
     /* -------------------------------------------------------------
+       FONCTION D'IMPRESSION OPTIMISÉE
+    ------------------------------------------------------------- */
+    function prepareAndPrint() {
+      const cards = document.querySelectorAll('.person-card');
+      if (cards.length === 0) {
+        alert("Veuillez ajouter au moins une personne avant d'imprimer.");
+        return;
+      }
+
+      let maxX = 0, maxY = 0;
+      cards.forEach(card => {
+        const left = parseFloat(card.style.left) || 0;
+        const top = parseFloat(card.style.top) || 0;
+        const width = card.offsetWidth || 220;
+        const height = card.offsetHeight || 160;
+
+        if (left + width > maxX) maxX = left + width;
+        if (top + height > maxY) maxY = top + height;
+      });
+
+      const workspace = document.getElementById('workspace');
+      const originalWidth = workspace.style.width;
+      const originalHeight = workspace.style.height;
+
+      workspace.style.width = `${Math.max(maxX + 60, 1000)}px`;
+      workspace.style.height = `${Math.max(maxY + 60, 700)}px`;
+      jsPlumbInstance.repaintEverything();
+
+      window.print();
+
+      workspace.style.width = originalWidth;
+      workspace.style.height = originalHeight;
+      jsPlumbInstance.repaintEverything();
+    }
+
+    /* -------------------------------------------------------------
        SAUVEGARDE ET CHARGEMENT (JSON)
     ------------------------------------------------------------- */
 
@@ -584,6 +656,7 @@
           name: card.querySelector('h4').innerText,
           role: card.querySelector('.role').innerText,
           email: card.getAttribute('data-email') || "",
+          phone: card.getAttribute('data-phone') || "",
           missions: card.querySelector('.missions').innerText,
           top: card.style.top,
           left: card.style.left
@@ -622,7 +695,6 @@
         try {
           const data = JSON.parse(e.target.result);
 
-          // Restauration Établissement
           if (data.school) {
             document.getElementById('sch-name').value = data.school.name || "";
             document.getElementById('sch-address').value = data.school.address || "";
@@ -637,7 +709,7 @@
 
           if (data.cards) {
             data.cards.forEach(c => {
-              createCard(c.id, c.name, c.role, c.email || "", c.missions, c.top, c.left);
+              createCard(c.id, c.name, c.role, c.email || "", c.phone || "", c.missions, c.top, c.left);
             });
           }
 
