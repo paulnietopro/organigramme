@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Constructeur d'Organigramme Interactif</title>
+  <title>Stemma - Créer l'organigramme d'un EPLE</title>
   
   <!-- jsPlumb Community Edition -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jsPlumb/2.15.6/js/jsplumb.min.js"></script>
@@ -26,7 +26,7 @@
 
     /* Barre supérieure */
     #topbar {
-      height: 55px;
+      height: 60px;
       background-color: #ffffff;
       border-bottom: 1px solid var(--border);
       display: flex;
@@ -37,7 +37,23 @@
       z-index: 20;
     }
 
-    #topbar h2 { font-size: 1.2rem; color: var(--primary); }
+    .brand-container {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand-container h2 {
+      font-size: 1.25rem;
+      color: var(--primary);
+      line-height: 1.1;
+      font-weight: 700;
+    }
+
+    .brand-container .subtitle {
+      font-size: 0.75rem;
+      color: #64748b;
+      font-weight: 500;
+    }
 
     .topbar-actions {
       display: flex;
@@ -48,7 +64,7 @@
     #main-container {
       display: flex;
       flex-grow: 1;
-      height: calc(100vh - 55px);
+      height: calc(100vh - 60px);
       position: relative;
     }
 
@@ -88,12 +104,63 @@
       color: #64748b;
     }
 
-    .sidebar-section input {
+    .sidebar-section input, .sidebar-section select {
       width: 100%;
       padding: 6px 8px;
       font-size: 0.85rem;
       border: 1px solid var(--border);
       border-radius: 4px;
+    }
+
+    /* Gestion des groupes */
+    .group-input-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .group-input-row input[type="text"] { flex: 1; }
+
+    .group-input-row input[type="color"] {
+      width: 36px;
+      height: 32px;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .groups-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 5px;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+
+    .group-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+
+    .group-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .group-color-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      display: inline-block;
     }
 
     .btn {
@@ -108,9 +175,11 @@
       transition: background 0.2s;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 6px;
     }
     .btn:hover { background-color: var(--primary-hover); }
+    .btn-sm { padding: 4px 8px; font-size: 0.75rem; }
     .btn-success { background-color: var(--success); }
     .btn-success:hover { background-color: var(--success-hover); }
     .btn-danger { background-color: var(--danger); }
@@ -125,9 +194,7 @@
       cursor: grab;
     }
 
-    #workspace-container:active {
-      cursor: grabbing;
-    }
+    #workspace-container:active { cursor: grabbing; }
 
     /* Canvas étendu */
     #workspace {
@@ -142,7 +209,7 @@
     /* Cartouche d'en-tête Établissement FLOTTANT à l'écran */
     #school-info-header {
       position: fixed;
-      top: 70px;
+      top: 75px;
       right: 25px;
       width: 300px;
       background: rgba(255, 255, 255, 0.95);
@@ -188,6 +255,18 @@
     .person-card h4 { font-size: 0.95rem; color: var(--text); margin-bottom: 2px; pointer-events: none; }
     .person-card .role { font-size: 0.82rem; font-weight: 600; color: #64748b; margin-bottom: 6px; pointer-events: none; }
     
+    .person-card .group-badge {
+      display: inline-block;
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+      background: rgba(0,0,0,0.05);
+      color: var(--text);
+      pointer-events: none;
+    }
+
     /* Contact (Email + Téléphone) */
     .person-card .contact-container {
       font-size: 0.78rem;
@@ -207,20 +286,19 @@
       gap: 4px;
     }
 
-    .person-card .contact-link:hover {
-      text-decoration: underline;
-    }
+    .person-card .contact-link:hover { text-decoration: underline; }
 
     .person-card .missions {
       font-size: 0.78rem;
       color: #334155;
-      background: #f8fafc;
+      background: rgba(255, 255, 255, 0.6);
       padding: 6px;
       border-radius: 4px;
       white-space: pre-wrap;
       max-height: 80px;
       overflow-y: auto;
       pointer-events: none;
+      border: 1px solid rgba(0, 0, 0, 0.05);
     }
 
     .card-actions {
@@ -260,7 +338,7 @@
       gap: 12px;
     }
 
-    .modal input, .modal textarea {
+    .modal input, .modal textarea, .modal select {
       width: 100%;
       padding: 8px;
       border: 1px solid var(--border);
@@ -282,14 +360,23 @@
     #workspace-container::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 5px; }
     #workspace-container::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
-    /* Impression */
+    /* -------------------------------------------------------------
+       STYLES D'IMPRESSION AVEC RENDER DE COULEURS OBLIGATOIRE
+    ------------------------------------------------------------- */
     @media print {
       @page { size: landscape; margin: 10mm; }
+      
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
       body { background-color: #ffffff !important; overflow: visible !important; height: auto !important; }
       #topbar, #sidebar, .card-actions, .jtk-endpoint, #modal-overlay { display: none !important; }
       #main-container { height: auto !important; overflow: visible !important; }
       #workspace-container { overflow: visible !important; background: transparent !important; }
       #workspace { background-image: none !important; background-color: #ffffff !important; }
+      
       #school-info-header {
         position: absolute !important;
         top: 0px !important;
@@ -299,7 +386,12 @@
         border-right: 4px solid #2563eb !important;
         background: #ffffff !important;
       }
-      .person-card { box-shadow: none !important; border: 1px solid #cbd5e1 !important; border-top: 4px solid #2563eb !important; break-inside: avoid; }
+
+      .person-card {
+        box-shadow: none !important;
+        border: 1px solid #cbd5e1 !important;
+        break-inside: avoid;
+      }
     }
   </style>
 </head>
@@ -307,7 +399,10 @@
 
   <!-- Barre du haut -->
   <div id="topbar">
-    <h2>Organigramme Interactif</h2>
+    <div class="brand-container">
+      <h2>Stemma</h2>
+      <span class="subtitle">Créer l'organigramme d'un EPLE</span>
+    </div>
     <div class="topbar-actions">
       <button class="btn btn-success" onclick="prepareAndPrint()">🖨️ Imprimer</button>
       <button class="btn btn-success" onclick="saveDiagram()">💾 Sauvegarder (JSON)</button>
@@ -342,6 +437,17 @@
           <label>4. Numéro de téléphone</label>
           <input type="tel" id="sch-phone" placeholder="ex: 05 56 73 31 00" oninput="updateSchoolHeader()">
         </div>
+      </div>
+
+      <!-- Section Gestion des Groupes -->
+      <div class="sidebar-section">
+        <h3>Groupes & Services</h3>
+        <div class="group-input-row">
+          <input type="text" id="new-group-name" placeholder="ex: Direction, Pôle Vie Scolaire...">
+          <input type="color" id="new-group-color" value="#3b82f6" title="Choisir la couleur du groupe">
+          <button class="btn btn-sm" onclick="addGroup()">+ </button>
+        </div>
+        <div class="groups-list" id="groups-list"></div>
       </div>
 
       <button class="btn" onclick="openModal()">+ Ajouter une personne</button>
@@ -381,6 +487,12 @@
         <input type="text" id="input-role" placeholder="ex: Responsable Projets">
       </div>
       <div>
+        <label style="font-size: 0.8rem;">Groupe / Service</label>
+        <select id="input-group">
+          <option value="">-- Aucun groupe --</option>
+        </select>
+      </div>
+      <div>
         <label style="font-size: 0.8rem;">Adresse Email</label>
         <div class="email-input-group">
           <input type="text" id="input-email-prefix" placeholder="j.dupont">
@@ -406,6 +518,7 @@
   <script>
     let jsPlumbInstance;
     let cardCount = 0;
+    let groups = [];
 
     jsPlumb.ready(function () {
       jsPlumbInstance = jsPlumb.getInstance({
@@ -441,6 +554,85 @@
       document.getElementById('disp-phone').innerText = phone;
     }
 
+    function hexToRgba(hex, alpha = 0.18) {
+      hex = hex.replace('#', '');
+      if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+      const num = parseInt(hex, 16);
+      return `rgba(${(num >> 16) & 255}, ${(num >> 8) & 255}, ${num & 255}, ${alpha})`;
+    }
+
+    /* -------------------------------------------------------------
+       GESTION DES GROUPES
+    ------------------------------------------------------------- */
+    function addGroup() {
+      const nameInput = document.getElementById('new-group-name');
+      const colorInput = document.getElementById('new-group-color');
+      const name = nameInput.value.trim();
+      const color = colorInput.value;
+
+      if (!name) {
+        alert("Veuillez saisir un nom de groupe.");
+        return;
+      }
+
+      const id = `group_${Date.now()}`;
+      groups.push({ id, name, color });
+      nameInput.value = '';
+
+      renderGroupsList();
+      updateGroupSelectOptions();
+    }
+
+    function deleteGroup(groupId) {
+      if (confirm("Supprimer ce groupe ? Les personnes associées ne feront plus partie de ce groupe.")) {
+        groups = groups.filter(g => g.id !== groupId);
+        
+        document.querySelectorAll(`.person-card[data-group="${groupId}"]`).forEach(card => {
+          card.removeAttribute('data-group');
+          card.style.backgroundColor = 'var(--card-bg)';
+          card.style.borderTopColor = 'var(--primary)';
+          const badge = card.querySelector('.group-badge');
+          if (badge) badge.remove();
+        });
+
+        renderGroupsList();
+        updateGroupSelectOptions();
+      }
+    }
+
+    function renderGroupsList() {
+      const listEl = document.getElementById('groups-list');
+      listEl.innerHTML = '';
+
+      groups.forEach(g => {
+        const item = document.createElement('div');
+        item.className = 'group-item';
+        item.innerHTML = `
+          <span class="group-pill">
+            <span class="group-color-dot" style="background-color: ${g.color}"></span>
+            <b>${g.name}</b>
+          </span>
+          <button class="action-btn btn-danger" onclick="deleteGroup('${g.id}')">🗑️</button>
+        `;
+        listEl.appendChild(item);
+      });
+    }
+
+    function updateGroupSelectOptions() {
+      const select = document.getElementById('input-group');
+      const currentVal = select.value;
+      select.innerHTML = '<option value="">-- Aucun groupe --</option>';
+
+      groups.forEach(g => {
+        const opt = document.createElement('option');
+        opt.value = g.id;
+        opt.textContent = g.name;
+        select.appendChild(opt);
+      });
+
+      select.value = currentVal;
+    }
+
     // Navigation Pan (Shift + Clic)
     const container = document.getElementById('workspace-container');
     let isPanning = false;
@@ -474,6 +666,7 @@
     // Modal
     function openModal(cardId = null) {
       const modal = document.getElementById('modal-overlay');
+      updateGroupSelectOptions();
       modal.style.display = 'flex';
 
       if (cardId) {
@@ -482,6 +675,7 @@
         document.getElementById('edit-id').value = cardId;
         document.getElementById('input-name').value = card.querySelector('h4').innerText;
         document.getElementById('input-role').value = card.querySelector('.role').innerText;
+        document.getElementById('input-group').value = card.getAttribute('data-group') || "";
         
         const emailAttr = card.getAttribute('data-email') || "";
         if (emailAttr.includes('@')) {
@@ -500,6 +694,7 @@
         document.getElementById('edit-id').value = "";
         document.getElementById('input-name').value = "";
         document.getElementById('input-role').value = "";
+        document.getElementById('input-group').value = "";
         document.getElementById('input-email-prefix').value = "";
         document.getElementById('input-email-domain').value = "";
         document.getElementById('input-phone').value = "";
@@ -515,6 +710,7 @@
       const id = document.getElementById('edit-id').value;
       const name = document.getElementById('input-name').value || "Sans Nom";
       const role = document.getElementById('input-role').value || "Poste non défini";
+      const groupId = document.getElementById('input-group').value;
       
       const prefix = document.getElementById('input-email-prefix').value.trim();
       const domain = document.getElementById('input-email-domain').value.trim();
@@ -534,6 +730,9 @@
         card.querySelector('.role').innerText = role;
         card.setAttribute('data-email', email);
         card.setAttribute('data-phone', phone);
+        card.setAttribute('data-group', groupId);
+
+        applyGroupStyleToCard(card, groupId);
 
         const contactContainer = card.querySelector('.contact-container');
         let contactHtml = "";
@@ -544,12 +743,34 @@
         card.querySelector('.missions').innerText = missions;
         jsPlumbInstance.revalidate(id);
       } else {
-        createCard(null, name, role, email, phone, missions);
+        createCard(null, name, role, groupId, email, phone, missions);
       }
       closeModal();
     }
 
-    function createCard(id = null, name, role, email = "", phone = "", missions = "", top = null, left = null) {
+    function applyGroupStyleToCard(card, groupId) {
+      const group = groups.find(g => g.id === groupId);
+      let badge = card.querySelector('.group-badge');
+
+      if (group) {
+        card.style.backgroundColor = hexToRgba(group.color, 0.18);
+        card.style.borderTopColor = group.color;
+
+        if (!badge) {
+          badge = document.createElement('div');
+          badge.className = 'group-badge';
+          card.insertBefore(badge, card.querySelector('.contact-container'));
+        }
+        badge.innerText = group.name;
+        badge.style.borderLeft = `3px solid ${group.color}`;
+      } else {
+        card.style.backgroundColor = 'var(--card-bg)';
+        card.style.borderTopColor = 'var(--primary)';
+        if (badge) badge.remove();
+      }
+    }
+
+    function createCard(id = null, name, role, groupId = "", email = "", phone = "", missions = "", top = null, left = null) {
       if (!id) {
         cardCount++;
         id = `person_${cardCount}`;
@@ -563,6 +784,7 @@
       card.id = id;
       card.setAttribute('data-email', email);
       card.setAttribute('data-phone', phone);
+      card.setAttribute('data-group', groupId);
       
       const posTop = top !== null ? top : `${container.scrollTop + 80 + (cardCount % 5 * 20)}px`;
       const posLeft = left !== null ? left : `${container.scrollLeft + 80 + (cardCount % 5 * 20)}px`;
@@ -586,6 +808,8 @@
       `;
 
       document.getElementById('workspace').appendChild(card);
+
+      applyGroupStyleToCard(card, groupId);
 
       jsPlumbInstance.draggable(id, { containment: 'workspace' });
 
@@ -655,6 +879,7 @@
           id: card.id,
           name: card.querySelector('h4').innerText,
           role: card.querySelector('.role').innerText,
+          groupId: card.getAttribute('data-group') || "",
           email: card.getAttribute('data-email') || "",
           phone: card.getAttribute('data-phone') || "",
           missions: card.querySelector('.missions').innerText,
@@ -671,12 +896,12 @@
         });
       });
 
-      const data = { school, cards, connections };
+      const data = { school, groups, cards, connections };
 
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(data, null, 2));
       const downloadAnchor = document.createElement('a');
       downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `organigramme_${new Date().toISOString().slice(0,10)}.json`);
+      downloadAnchor.setAttribute("download", `stemma_${new Date().toISOString().slice(0,10)}.json`);
       document.body.appendChild(downloadAnchor);
       downloadAnchor.click();
       downloadAnchor.remove();
@@ -703,13 +928,23 @@
             updateSchoolHeader();
           }
 
+          if (data.groups) {
+            groups = data.groups;
+            renderGroupsList();
+            updateGroupSelectOptions();
+          } else {
+            groups = [];
+            renderGroupsList();
+            updateGroupSelectOptions();
+          }
+
           jsPlumbInstance.deleteEveryEndpoint();
           document.getElementById('workspace').innerHTML = '';
           cardCount = 0;
 
           if (data.cards) {
             data.cards.forEach(c => {
-              createCard(c.id, c.name, c.role, c.email || "", c.phone || "", c.missions, c.top, c.left);
+              createCard(c.id, c.name, c.role, c.groupId || "", c.email || "", c.phone || "", c.missions, c.top, c.left);
             });
           }
 
